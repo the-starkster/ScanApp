@@ -24,35 +24,25 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.activity_main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
+        // Setup intent for Scan
+        ActivityResultLauncher<ScanOptions> barcodeLauncher = registerForActivityResult(new ScanContract(), result -> {
+            if (result.getContents() != null) {
+                Toast.makeText(MainActivity.this, "Scanned: " + result.getContents(), Toast.LENGTH_LONG).show();
+            }
         });
+
+        // Setup Scan Options
+        ScanOptions options = new ScanOptions();
+        options.setDesiredBarcodeFormats(ScanOptions.ALL_CODE_TYPES);
+        options.setPrompt("");
+        options.setCameraId(0);  // Use a specific camera of the device
+        options.setBeepEnabled(false);
+        options.setBarcodeImageEnabled(true);
+        options.setOrientationLocked(false);
+
 
         Button scanButton = findViewById(R.id.button);
-        scanButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                // Setup Scan Options
-                ScanOptions options = new ScanOptions();
-                options.setDesiredBarcodeFormats(ScanOptions.ALL_CODE_TYPES);
-                options.setPrompt("");
-                options.setCameraId(0);  // Use a specific camera of the device
-                options.setBeepEnabled(false);
-                options.setBarcodeImageEnabled(true);
-                options.setOrientationLocked(false);
-                barcodeLauncher.launch(options);
-            }
-
-            // Setup intent for Scan
-            private final ActivityResultLauncher<ScanOptions> barcodeLauncher = registerForActivityResult(new ScanContract(), result -> {
-                if (result.getContents() != null) {
-                    Toast.makeText(MainActivity.this, "Scanned: " + result.getContents(), Toast.LENGTH_LONG).show();
-                }
-            });
-
-        });
+        scanButton.setOnClickListener(view -> barcodeLauncher.launch(options));
 
     }
 
