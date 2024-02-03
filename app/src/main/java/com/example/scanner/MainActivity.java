@@ -1,7 +1,8 @@
 package com.example.scanner;
 
+
 import android.os.Bundle;
-import android.view.View;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -9,14 +10,16 @@ import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.journeyapps.barcodescanner.ScanContract;
 import com.journeyapps.barcodescanner.ScanOptions;
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final String TAG = "MainActivityLog";
+    FirebaseFirestore db = FirebaseFirestore.getInstance();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,7 +30,9 @@ public class MainActivity extends AppCompatActivity {
         // Setup intent for Scan
         ActivityResultLauncher<ScanOptions> barcodeLauncher = registerForActivityResult(new ScanContract(), result -> {
             if (result.getContents() != null) {
-                Toast.makeText(MainActivity.this, "Scanned: " + result.getContents(), Toast.LENGTH_LONG).show();
+                String codiceFiscaleScanned = result.getContents(); // Il codice fiscale ottenuto dal QR Code
+                //Toast.makeText(MainActivity.this, "Scanned: " + result.getContents(), Toast.LENGTH_LONG).show();
+                queryTaxIdCode(codiceFiscaleScanned);
             }
         });
 
@@ -60,4 +65,31 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+    //Controllo se il codice fiscale si trovan nel data base
+    public void queryTaxIdCode(String codiceFiscaleScanned){
+
+        db.collection("Users Data")
+                .whereEqualTo("Tax ID Code", codiceFiscaleScanned)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        if (task.getResult().isEmpty()) {
+                            // Nessun documento corrispondente trovato, mostra "Accesso negato"
+                            Log.d(TAG, "Nessun documento corrispondente trovato per il codice fiscale: " + codiceFiscaleScanned);
+                            Toast.makeText(MainActivity.this, "Accesso negato", Toast.LENGTH_LONG).show();
+                        } else {
+                            // Documenti corrispondenti trovati, mostra "Accesso consentito"
+                            Log.d(TAG, "Documenti corrispondenti trovati per il codice fiscale: " + codiceFiscaleScanned);
+                            for (QueryDocumentSnapshot document : task.getResult()) {
+                                Log.d(TAG, document.getId() + " => " + document.getData());
+                            }
+                            Toast.makeText(MainActivity.this, "Accesso consentito", Toast.LENGTH_LONG).show();
+                        }
+                    } else {
+                        Log.w(TAG, "Errore nella ricerca dei dati per il codice fiscale: " + codiceFiscaleScanned, task.getException());
+                        Toast.makeText(MainActivity.this, "Errore nella ricerca dei dati", Toast.LENGTH_LONG).show();
+                    }
+                });
+    }
 }
